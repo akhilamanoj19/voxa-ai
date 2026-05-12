@@ -38,8 +38,10 @@
                     <!-- Bot Message -->
                     <div class="d-flex justify-content-start mb-4 animate-fade-in">
                         <div class="max-w-75">
-                            <div class="bg-light p-3 rounded-4 border shadow-sm mb-1 text-dark">
-                                {{ $chat->bot_response }}
+                            <div class="bg-light p-3 rounded-4 border shadow-sm mb-1 text-dark bot-message-content">
+                                <div class="markdown-body">
+                                    {{ $chat->bot_response }}
+                                </div>
                             </div>
                             <div class="small text-muted opacity-75">AI Assistant • {{ $chat->created_at->format('H:i') }}</div>
                         </div>
@@ -80,6 +82,31 @@
         max-width: 75%;
     }
     
+    .markdown-body {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+    .markdown-body p:last-child {
+        margin-bottom: 0;
+    }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        color: #1a1a1a;
+    }
+    .markdown-body ul, .markdown-body ol {
+        padding-left: 1.25rem;
+        margin-bottom: 0.5rem;
+    }
+    .markdown-body code {
+        background: rgba(0,0,0,0.05);
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    
     .typing-dots span {
         width: 8px;
         height: 8px;
@@ -94,7 +121,8 @@
     .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
 
     @keyframes typing {
-        /* Animation removed */
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1.0); }
     }
 
     /* Custom Scrollbar */
@@ -107,6 +135,7 @@
     }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <x-slot name="scripts">
 <script>
@@ -114,6 +143,12 @@
         const chatContainer = document.getElementById('chatContainer');
         const chatForm = document.getElementById('chatForm');
         const typingIndicator = document.getElementById('typingIndicator');
+
+        // Render Markdown
+        document.querySelectorAll('.markdown-body').forEach(el => {
+            const rawText = el.textContent.trim();
+            el.innerHTML = marked.parse(rawText);
+        });
 
         // Scroll to bottom
         chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -144,7 +179,7 @@
 
             recognition.onstart = function() {
                 isListening = true;
-                voiceBtn.innerHTML = '<i class="fas fa-stop-circle text-danger scale-110"></i>';
+                voiceBtn.innerHTML = '<i class="fas fa-stop-circle text-danger"></i>';
                 voiceBtn.title = "Stop Recording";
             };
 
@@ -156,7 +191,6 @@
             recognition.onerror = function() {
                 isListening = false;
                 voiceBtn.innerHTML = '<i class="fas fa-microphone text-primary"></i>';
-                alert('Voice recognition error. Please try again.');
             };
 
             recognition.onend = function() {

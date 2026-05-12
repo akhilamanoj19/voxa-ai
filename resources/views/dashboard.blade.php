@@ -30,7 +30,6 @@
             <div class="glass-card h-100">
                 <div class="d-flex align-items-center justify-content-between mb-4">
                     <h5 class="mb-0 fw-semibold">Chat History</h5>
-                    <a href="{{ route('chat.index') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">View All</a>
                 </div>
                 
                 <div class="table-responsive">
@@ -48,7 +47,16 @@
                                         <div class="text-muted small">{{ $chat->created_at->diffForHumans() }}</div>
                                     </td>
                                     <td class="text-end">
-                                        <i class="fas fa-chevron-right text-muted opacity-50"></i>
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <form action="{{ route('chat.delete', $chat->id) }}" method="POST" onsubmit="return confirm('Delete this conversation?')" onclick="event.stopPropagation()">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-link text-danger p-0" title="Delete">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </form>
+                                            <i class="fas fa-chevron-right text-muted opacity-50 ms-2"></i>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

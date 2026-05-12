@@ -92,6 +92,8 @@
             border-bottom: 1px solid var(--glass-border);
             padding: 15px 30px;
             margin: -30px -30px 30px -30px;
+            position: relative;
+            z-index: 900;
         }
 
         /* Glass Cards */

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-
 use App\Models\Chat;
+use App\Models\Conversation;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class ChatController extends Controller
 {
@@ -16,8 +18,14 @@ class ChatController extends Controller
 
         $conversationId = session('active_conversation_id');
 
+        // Verify conversation exists and belongs to user
+        if ($conversationId) {
+            $exists = Conversation::where('id', $conversationId)->where('user_id', auth()->id())->exists();
+            if (!$exists) $conversationId = null;
+        }
+
         if (!$conversationId) {
-            $conversation = \App\Models\Conversation::create([
+            $conversation = Conversation::create([
                 'user_id' => auth()->id(),
                 'title' => 'New Conversation'
             ]);
@@ -39,14 +47,24 @@ class ChatController extends Controller
         $apiKey = config('services.gemini.key');
         $conversationId = session('active_conversation_id');
 
-        // Update conversation title if it's still default
-        $conversation = \App\Models\Conversation::find($conversationId);
-        if ($conversation && $conversation->title === 'New Conversation') {
-            $conversation->update(['title' => \Illuminate\Support\Str::limit($userMessage, 40)]);
+        // Create session if it doesn't exist
+        if (!$conversationId) {
+            $conversation = Conversation::create([
+                'user_id' => auth()->id(),
+                'title' => Str::limit($userMessage, 40)
+            ]);
+            $conversationId = $conversation->id;
+            session(['active_conversation_id' => $conversationId]);
+        } else {
+            // Update conversation title if it's still default
+            $conversation = Conversation::find($conversationId);
+            if ($conversation && $conversation->title === 'New Conversation') {
+                $conversation->update(['title' => Str::limit($userMessage, 40)]);
+            }
         }
         
         try {
-            $response = \Illuminate\Support\Facades\Http::withoutVerifying()->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={$apiKey}", [
+            $response = Http::withoutVerifying()->post("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={$apiKey}", [
                 'contents' => [
                     [
                         'parts' => [
@@ -60,10 +78,10 @@ class ChatController extends Controller
                 $data = $response->json();
                 $botResponse = $data['candidates'][0]['content']['parts'][0]['text'] ?? "I'm sorry, I couldn't process that.";
             } else {
-                $botResponse = "API Error: " . ($response->json()['error']['message'] ?? 'Unknown error');
+                $botResponse = "AI Error: The service is temporarily unavailable. Please check your API key.";
             }
         } catch (\Exception $e) {
-            $botResponse = "Connection Error: " . $e->getMessage();
+            $botResponse = "Connection Error: Unable to reach the AI server. Please check your internet.";
         }
 
         Chat::create([
@@ -78,8 +96,21 @@ class ChatController extends Controller
 
     public function clearChat()
     {
-        // Instead of deleting, just start a new session
         session()->forget('active_conversation_id');
-        return redirect()->back()->with('status', 'Started a new conversation!');
+        return redirect()->route('chat.index')->with('status', 'Started a new conversation!');
+    }
+
+    public function deleteConversation($id)
+    {
+        $conversation = Conversation::where('id', $id)->where('user_id', auth()->id())->firstOrFail();
+        
+        Chat::where('conversation_id', $id)->delete();
+        $conversation->delete();
+
+        if (session('active_conversation_id') == $id) {
+            session()->forget('active_conversation_id');
+        }
+
+        return redirect()->route('dashboard')->with('status', 'Conversation deleted successfully!');
     }
 }
